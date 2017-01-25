@@ -9,10 +9,11 @@
 // Some of the code comes from WebComponents.JS
 // https://github.com/webcomponents/webcomponentsjs/blob/master/src/HTMLImports/path.js
 
-import {UrlResolver} from './url_resolver';
+import { UrlResolver } from './url_resolver';
+import * as sass from 'node-sass';
 
 export class StyleWithImports {
-  constructor(public style: string, public styleUrls: string[]) {}
+  constructor(public style: string, public styleUrls: string[]) { }
 }
 
 export function isStyleUrlResolvable(url: string): boolean {
@@ -26,19 +27,28 @@ export function isStyleUrlResolvable(url: string): boolean {
  * are either relative or don't have a `package:` scheme
  */
 export function extractStyleUrls(
-    resolver: UrlResolver, baseUrl: string, cssText: string): StyleWithImports {
+  resolver: UrlResolver, baseUrl: string, cssText: string): StyleWithImports {
   const foundUrls: string[] = [];
 
+  if (baseUrl.endsWith(".sass") || baseUrl.endsWith(".scss")) {
+    var result = sass.renderSync({
+      file: baseUrl,
+      indentedSyntax: true
+    });
+    cssText = result.css.toString('utf-8');
+  }
+
+
   const modifiedCssText =
-      cssText.replace(CSS_COMMENT_REGEXP, '').replace(CSS_IMPORT_REGEXP, (...m: string[]) => {
-        const url = m[1] || m[2];
-        if (!isStyleUrlResolvable(url)) {
-          // Do not attempt to resolve non-package absolute URLs with URI scheme
-          return m[0];
-        }
-        foundUrls.push(resolver.resolve(baseUrl, url));
-        return '';
-      });
+    cssText.replace(CSS_COMMENT_REGEXP, '').replace(CSS_IMPORT_REGEXP, (...m: string[]) => {
+      const url = m[1] || m[2];
+      if (!isStyleUrlResolvable(url)) {
+        // Do not attempt to resolve non-package absolute URLs with URI scheme
+        return m[0];
+      }
+      foundUrls.push(resolver.resolve(baseUrl, url));
+      return '';
+    });
   return new StyleWithImports(modifiedCssText, foundUrls);
 }
 
